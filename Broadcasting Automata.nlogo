@@ -2,6 +2,7 @@ globals [
   lattice   ;; only those patches where both pxcor and pycor are even
 ]
 
+
 to setup
   clear-all
   set lattice patches with [pxcor mod 2 = 0 and pycor mod 2 = 0]
