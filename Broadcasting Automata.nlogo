@@ -1,130 +1,125 @@
 globals [
-  lattice   ;; only those patches where both pxcor and pycor are even
+  spoints
+  iterations
 ]
 
+breed [ dots dot ]
+
+dots-own [values]
 
 to setup
   clear-all
-  set lattice patches with [pxcor mod 2 = 0 and pycor mod 2 = 0]
-  if count lattice != count patches / 4
-    [ user-message "The world size must be even in both dimensions."
-      stop ]
-  ask patches
-    [ set pcolor white ]
-  ask patches
-    [ if random-float 100 < density
-        [ set pcolor black ] ]
+
+  resize-world 0 width 0 height
+  set-patch-size unit-size
+
+  set spoints []
+  set iterations 1
+
+  ask patches [ set pcolor white ]
+  ask patches [
+    sprout-dots 1 [
+      set color black
+      set size 0.2
+      set shape "circle"
+    ]
+  ]
+
   reset-ticks
 end
 
+;; construct obstacles to stop broadcasting
+to draw-obstacles
+  while [ mouse-down? ]
+  [ let selected (one-of dots with [ distancexy mouse-xcor mouse-ycor < 0.2 ])
+    if selected != nobody [ ask selected  [
+      ask patch-here [ set pcolor black ]
+      die ]]]
+end
+
+;; add starting points to the lattice network
+to add-spoint
+  if mouse-down? [
+    let selected (one-of dots with [ distancexy mouse-xcor mouse-ycor < 0.2 ])
+    if selected != nobody [
+      ask selected [
+        set color red
+        set size 0.5 ]
+      set spoints (lput selected spoints)
+      set spoints remove-duplicates spoints]
+    display]
+end
+
+;; apply painting algorithm
+to paint [ selecteddot ]
+  ask selecteddot [
+    ask patch-here [ set pcolor blue ]]
+end
+
+;; rule for automata to broadcast messages
+to broadcast [ centerpoint ]
+  let targetdistance iterations
+  if targetdistance <= radius [
+    ask dots with [ distance centerpoint <= targetdistance ] [
+      set values(3)
+      paint self ]]
+end
+
+;; apply chain codes
+;to-report send-message [ index ]
+;  let num 0
+;  let temp 0
+;  repeat length(chaincodes) [
+;    if item temp chaincodes = "," [
+;      set num (num + 1) ]
+;    set temp (temp + 1)
+;  ]
+;  set num (num + 1)
+;  report chaincodes(iterations mod num)
+;end
+
 to go
-  ask lattice [ do-rule  1 ]  ;; propagation
-  ask lattice [ do-rule -1 ]  ;; collision
+  foreach spoints [ x -> broadcast x ]
+
+  set iterations (iterations + 1)
   tick
 end
-
-to go-reverse  ;; applying rules to the lattice in reverse order reverses the system
-  ask lattice [ do-rule -1 ]  ;; collision
-  ask lattice [ do-rule  1 ]  ;; propagation
-  tick
-end
-
-;; grid = 1 if even lattice, grid = -1 if odd lattice
-to do-rule [grid]
-  let a self
-  let b patch-at (- grid) 0
-  let c patch-at 0 grid
-  let d patch-at (- grid) grid
-
-  ifelse ([pcolor] of a) != ([pcolor] of b) and
-         ([pcolor] of c) != ([pcolor] of d)
-    [ swap-pcolor a b
-      swap-pcolor c d ]
-    [ swap-pcolor a d
-      swap-pcolor b c ]
-end
-
-to swap-pcolor [p1 p2]
-  ask p1 [
-    let temp pcolor
-    set pcolor [pcolor] of p2
-    ask p2 [ set pcolor temp ]
-  ]
-end
-
-to draw-circle
-  while [mouse-down?]
-    [ ask patch mouse-xcor mouse-ycor
-        [ ask patches in-radius radius
-            [ set pcolor black ] ]
-      display ]
-end
-
-
-; Copyright 2002 Uri Wilensky.
-; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
 210
 10
-634
-435
+758
+559
 -1
 -1
-13.0
+30.0
 1
 10
 1
 1
 1
 0
-1
-1
-1
 0
-31
--31
 0
 1
-1
+0
+17
+0
+17
+0
+0
 1
 ticks
 30.0
 
-SLIDER
-20
-19
-192
-52
-Density
-Density
-0
-100
-10.0
-1
-1
-NIL
-HORIZONTAL
-
-INPUTBOX
-18
-78
-173
-138
-Radius
-5.0
-1
-0
-Number
-
 BUTTON
-27
-181
-90
-214
-Go
-go
+23
+348
+86
+381
 NIL
+go
+T
 1
 T
 OBSERVER
@@ -132,14 +127,14 @@ NIL
 NIL
 NIL
 NIL
-1
+0
 
 BUTTON
-19
-244
-97
-277
-Setup
+65
+392
+143
+425
+NIL
 setup
 NIL
 1
@@ -150,6 +145,149 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+12
+83
+184
+116
+radius2
+radius2
+1
+height * height
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+12
+125
+184
+158
+height
+height
+4
+25
+17.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+15
+172
+187
+205
+width
+width
+4
+25
+17.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+15
+215
+187
+248
+unit-size
+unit-size
+10
+100
+30.0
+5
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+22
+271
+160
+316
+shape
+shape
+"square" "hexagon" "triangle"
+0
+
+BUTTON
+34
+436
+167
+469
+NIL
+add-spoint
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+INPUTBOX
+791
+12
+956
+72
+chaincodes
+NIL
+1
+0
+String
+
+INPUTBOX
+28
+15
+183
+75
+radius
+4.0
+1
+0
+Number
+
+BUTTON
+100
+348
+196
+381
+go-once
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
+
+BUTTON
+24
+482
+185
+515
+NIL
+draw-obstacles
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
 
 @#$#@#$#@
 ## WHAT IS IT?
